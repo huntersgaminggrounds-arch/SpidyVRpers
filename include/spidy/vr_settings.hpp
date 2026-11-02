@@ -37,6 +37,9 @@ struct Values {
     int haptics = 100;     // controller vibration, percent
     int screenSize = 1;    // the game screen: 0 small, 1 medium, 2 large
     bool airWebs = true;   // a web that meets nothing within reach holds in open air there
+    // With airWebs off, a web that just misses (by up to 8 degrees) catches
+    // the nearest real surface instead (Swing::shot; pull request #39).
+    bool smartAnchor = false;
     bool webShooter = true; // a free hand's trigger shoots web balls
     // Degrees a second the right stick turns you while held over; 0: it snap
     // turns instead.
@@ -80,6 +83,11 @@ struct Values {
     bool standOnWalls = true;
     // Experimental physical hand pulls, solid palms and crawling body poses.
     bool handClimb = false;
+    bool halfPunchDamage = false; // half health damage, unchanged punch reactions
+    // The wall-floor camera transition during HAND WALL CLIMBING's joystick
+    // runs (the tab's JOYSTICK WALL RUN CAMERA), as before pull request #38;
+    // off, the left stick drives the momentum wall run's view and gait.
+    bool joystickRunCamera = true;
     bool wallRunCameraTilt = true; // optional horizontal momentum-run camera bank
     // Scenes the game plays on the game screen (cutscenes, finishers) have
     // depth there (the tab's GAME SCREEN 3D): 0 off, the game's flat frame; 1
@@ -141,6 +149,60 @@ struct Values {
     // Only where the headset tracks the eyes (XrRuntime::eyeTracking); 0, or
     // no eye tracker, the hands aim balls and the head zips as before.
     int eyeAim = 0;
+    // How far webs stretch under load (the tab's ELASTIC WEB): 0 off, a hard
+    // rope as before; 1 to 3 softer and softer (Swing::elasticWeb; pull
+    // request #40).
+    int elasticWeb = 0;
+    // How long a loaded web's last pull fades after you let go (the tab's
+    // SOFT RELEASE): 0 at once, as before; 1 to 3 for 120, 180 or 240 ms
+    // (Swing::softRelease; pull request #41).
+    int softRelease = 0;
+    // While a web carries you and for a moment after, speed into what is
+    // ahead is cut so you do not slam into it; your lane stays yours (the
+    // tab's SWING ASSIST; Swing::allowSwingAssist; pull request #42).
+    bool swingAssist = false;
+    // How fast WEB SLINGSHOT launches you at full draw, m/s (the tab's
+    // SLINGSHOT SPEED): 0, its launch as before, under the swing's speed
+    // limit; 20 to 300 its own (Swing::setSlingshotSpeed; pull request #45).
+    int slingshotSpeed = 0;
+    // How smoothly RECORDING FOV's window view turns with the head (the tab's
+    // RECORDING SMOOTHING): 0 off; 10 to 100, slower and slower. The
+    // headset's view is never smoothed (pull request #46).
+    int recordingSmoothing = 0;
+    // Hand gestures on webs (pull request #47): TWO HAND WEB ZIP, both webs
+    // on one spot and both arms pulled back fast launch you at it; HAND ROPE
+    // STEERING, the free hand on your web too pulls sideways to turn the
+    // swing (Swing::allowGestures).
+    bool twoHandZip = false, ropeSteering = false;
+    // How far a web reaches, open-air webs too, m (the tab's WEB RANGE; 100
+    // as before), and how fast it flies there (WEB SPEED): 0 it sticks at
+    // once, as before; 1 to 3 it flies at 60, 150 or 350 m/s, pulls only
+    // once it has arrived and catches softly (Swing::webTravel; pull
+    // request #48).
+    int webRange = 100, webSpeed = 0;
+    // The pair the headset shows turned by the player's own turn since it was
+    // rendered (the tab's FLIP REPROJECTION; flip_reprojection.hpp): flips,
+    // spins and smooth turns as steady as head turns. Off by default, to
+    // compare in the headset.
+    bool flipReprojection = false;
+    // The HUD as a layer of its own that the headset shows at its own rate
+    // (the tab's STEADY HUD; steady_hud.hpp), instead of drawn into each eye
+    // pair by the game: it holds still when the headset repeats a pair. Off
+    // by default, to compare in the headset.
+    bool steadyHud = false;
+    // The reel felt in the hand (the tab's REEL HAPTICS; reel_haptics.hpp):
+    // the reeling hand's controller ticks like a winch. Off by default.
+    bool reelHaptics = false;
+    // The swing felt in the hand (the tab's SWING HAPTICS; swing_haptics.hpp):
+    // a taut web's hand ticks with the body's travel, fainter than the reel.
+    // Off by default.
+    bool swingHaptics = false;
+    // The phone's MUSIC plays what the PC plays (the tab's PC MEDIA;
+    // phone_pc_media.hpp): Spotify, a browser. Off by default: the Music folder.
+    bool pcMedia = false;
+    // How much speed a fast one-hand web yank adds, percent (the tab's SINGLE
+    // HAND YANK STRENGTH; Swing::singleHandYankStrength): 100 as before.
+    int singleHandYankPercent = 100;
     bool operator==(const Values&) const = default;
 };
 inline constexpr int eyeAimShots = 1, eyeAimZips = 2;
@@ -234,8 +296,26 @@ enum class Item : uint8_t {
     controlledFlips,
     combatVisuals,
     eyeAim,
+    smartAnchor,
+    elasticWeb,
+    softRelease,
+    swingAssist,
+    slingshotSpeed,
+    recordingSmoothing,
+    twoHandZip,
+    ropeSteering,
+    webRange,
+    webSpeed,
+    joystickRunCamera,
+    halfPunchDamage,
+    flipReprojection,
+    steadyHud,
+    reelHaptics,
+    swingHaptics,
+    pcMedia,
+    singleHandYankStrength,
 };
-inline constexpr Item lastItem = Item::eyeAim;
+inline constexpr Item lastItem = Item::singleHandYankStrength;
 // Where a row shows: in the tab; on the pause menu's first page instead,
 // under RESUME: VR VIEW (the user, October 15: "move the VIEW: GAME SCREEN to
 // the first menu (the one with resume)"); or only in the launcher's options:
@@ -258,7 +338,7 @@ struct Row {
     std::span<const char* const> choices{};
     Place place{};
 };
-const std::array<Row, 52>& rows();
+const std::array<Row, 70>& rows();
 // The most choices a row shows (game_menu's buffers): a row with more would
 // lose its last ones.
 inline constexpr size_t maxChoices = 9;
@@ -275,10 +355,10 @@ bool choose(Item, int choice, Values&);
 int defaultChoice(Item);
 // The settings no launcher.ini key or XrConfig field carries: NEAR CLIP,
 // RECORDING FOV, UI STYLE, BLOW SOUNDS, HEIGHT, SEATED, WEB SLINGSHOT, BETTER CLIMBING, HAND WALL
-// CLIMBING, EYE AIM, the realistic flips' eleven rows and the body haptics' four groups. The game
-// module keeps them as these key=value lines in a file of their own, beside
-// the launcher's settings (game_xr.cpp, tabOnlyPath), and reads them back
-// when VR starts; the launcher's options read and write the same file.
+// CLIMBING, EYE AIM, FLIP REPROJECTION, STEADY HUD, REEL HAPTICS, SWING HAPTICS, the realistic flips'
+// eleven rows and the body haptics' four groups. The game module keeps them as these key=value lines in a
+// file of their own, beside the launcher's settings (game_xr.cpp, tabOnlyPath), and reads them back when
+// VR starts; the launcher's options read and write the same file.
 std::string tabOnlyText(const Values&);
 // The values with what such text holds, sanitized. A line with an unknown
 // key, or whose value is no whole number, is passed over.

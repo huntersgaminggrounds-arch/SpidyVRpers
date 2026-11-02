@@ -1821,8 +1821,19 @@ void App::options(ImVec2 origin, ImVec2 size) {
                    stepCombo("##webButton", kWebButtons, buttons, 2, &trigger);
                    o.triggerWebs = trigger != 0;
                });
-        option("Webs hold in open air", "With nothing in reach, a web still holds 100 m out; off, it misses.", S(42),
+        option("Webs hold in open air",
+               "With nothing in reach, a web still holds as far out as Web range; off, it misses.", S(42),
                [&] { changed |= toggle("##air", &o.airWebs); });
+        option("Smart anchor",
+               "With webs holding in open air off, a web that just misses still catches the real surface "
+               "nearest it.",
+               S(42), [&] { tabToggle("##smartanchor", Item::smartAnchor); });
+        option("Web range", "How far a web reaches; a web in open air holds this far out.", S(150),
+               [&] { tabCombo("##webrange", Item::webRange); });
+        option("Web speed",
+               "Off, a web sticks at once; or it flies there, visibly, pulls only once it has arrived "
+               "and catches you softly.",
+               S(150), [&] { tabCombo("##webspeed", Item::webSpeed); });
         option("Aim markers", "Show where each hand's web would land.", S(42),
                [&] { changed |= toggle("##aim", &o.aimMarkers); });
         option("Eye aim",
@@ -1839,10 +1850,28 @@ void App::options(ImVec2 origin, ImVec2 size) {
         option("Weight", "How heavy you are while swinging and after letting go. 100% is real gravity.", S(150), [&] {
             stepCombo("##weight", kWeights, kWeightValues, static_cast<int>(std::size(kWeightValues)), &o.weight);
         });
+        option("Elastic web", "Webs stretch under load and catch you more softly; higher is softer.", S(150),
+               [&] { tabCombo("##elasticweb", Item::elasticWeb); });
+        option("Soft release", "A web's last pull fades briefly as you let go; higher lasts longer.", S(150),
+               [&] { tabCombo("##softrelease", Item::softRelease); });
+        option("Swing assist",
+               "Swinging at a wall, you slow down before you hit it; where you go stays yours.", S(42),
+               [&] { tabToggle("##swingassist", Item::swingAssist); });
         option("Web slingshot", "No auto jump. Draw two fixed webs, hold for vibration, release both to launch.",
                S(42), [&] { tabToggle("##webslingshot", Item::webSlingshot); });
+        option("Slingshot speed",
+               "How fast a full draw launches you: under the swing speed limit, or at a speed of its own.",
+               S(150), [&] { tabCombo("##slingshotspeed", Item::slingshotSpeed); });
         option("Better climbing", "Take one web in both hands, then pull hand over hand to keep climbing it.",
                S(42), [&] { tabToggle("##betterclimbing", Item::betterClimbing); });
+        option("Single hand yank strength",
+               "How much speed a fast one-hand web yank adds. 100% as before; two-hand zips are unchanged.",
+               S(150), [&] { tabCombo("##singlehandyank", Item::singleHandYankStrength); });
+        option("Two hand web zip", "Both webs on one spot: pull both arms back fast to launch at it.",
+               S(42), [&] { tabToggle("##twohandzip", Item::twoHandZip); });
+        option("Hand rope steering",
+               "Hold your web with the free hand too and pull sideways to turn your swing.", S(42),
+               [&] { tabToggle("##ropesteering", Item::ropeSteering); });
         option("Snap turn", "How far a flick of the right stick turns you.", S(150), [&] {
             stepCombo("##snap", kSnapTurns, kSnapValues, static_cast<int>(std::size(kSnapValues)), &o.snapTurn);
         });
@@ -1856,6 +1885,10 @@ void App::options(ImVec2 origin, ImVec2 size) {
                "On a wall with the left stick at rest, squeeze a grip near the wall to hold on and pull to "
                "climb; both grips held roll your view along it.",
                S(42), [&] { tabToggle("##handclimb", Item::handClimb); });
+        option("Joystick wall run camera",
+               "On: a joystick run turns your view onto the wall, as before. Off: the left stick drives the "
+               "momentum wall run's view and gait.",
+               S(42), [&] { tabToggle("##joystickruncamera", Item::joystickRunCamera); });
         option("Wall Run Camera Tilt", "Gently bank with the body on horizontal momentum wall runs.", S(42),
                [&] { tabToggle("##wallruncameratilt", Item::wallRunCameraTilt); });
     });
@@ -1871,6 +1904,10 @@ void App::options(ImVec2 origin, ImVec2 size) {
             stepCombo("##flipspeed", kFlipSpeeds, kFlipSpeedValues, static_cast<int>(std::size(kFlipSpeedValues)),
                       &o.flipSpeed);
         });
+        option("Flip reprojection (experimental)",
+               "The headset's picture turned by your flip, spin or smooth turn since the game drew it, as it "
+               "is for your head: steadier turns. Off: as before, to compare.",
+               S(42), [&] { tabToggle("##flipreprojection", Item::flipReprojection); });
         option("Realistic flips (experimental)",
                "Webs and arm swings spin you in the air, and landing brings you upright. While on, it takes "
                "the place of Flips' turns, and with Flips on too the left stick steers.",
@@ -1935,6 +1972,13 @@ void App::options(ImVec2 origin, ImVec2 size) {
         option("Controller vibration", "How strongly webs and punches buzz.", S(150), [&] {
             stepCombo("##haptics", kHaptics, kHapticValues, static_cast<int>(std::size(kHapticValues)), &o.haptics);
         });
+        option("Reel haptics", "Reeling a web in ticks in that hand like a winch.", S(42),
+               [&] { tabToggle("##reelhaptics", Item::reelHaptics); });
+        option("Swing haptics", "Swinging on a taut web ticks softly in that hand, faster as you speed up.",
+               S(42), [&] { tabToggle("##swinghaptics", Item::swingHaptics); });
+        option("PC media",
+               "The phone's MUSIC plays what the PC plays: Spotify, a browser. Off: the Music folder.", S(42),
+               [&] { tabToggle("##pcmedia", Item::pcMedia); });
         option("Body haptics", "A bHaptics vest, sleeves and visor feel webs, blows, wind and Spider-Sense; the "
                                "bHaptics Player has to be running.",
                S(150), [&] {
@@ -2017,6 +2061,10 @@ void App::options(ImVec2 origin, ImVec2 size) {
             static constexpr int sizes[] = {0, 1, 2, 3};
             stepCombo("##hud", kHudSizes, sizes, 4, &o.hud);
         });
+        option("Steady HUD (experimental)",
+               "The HUD shown by the headset itself, at its own rate, instead of drawn into the game's "
+               "picture: it holds still when the game falls behind. Off: as before, to compare.",
+               S(42), [&] { tabToggle("##steadyhud", Item::steadyHud); });
         option("UI style",
                "Spidy's own marks, gadget wheel and meters: Comic, printed like Spidy's videos, or Tech, like the "
                "game's HUD.",
@@ -2024,6 +2072,10 @@ void App::options(ImVec2 origin, ImVec2 size) {
         option("Combat visuals",
                "Show punch arrows, target rings, hit effects and KO text. Spider-Sense stays on.",
                S(42), [&] { tabToggle("##combatvisuals", Item::combatVisuals); });
+        option(
+            "Half punch damage",
+            "Punches and web strikes deal half their damage; launches, smashes and knockback stay the same.",
+            S(42), [&] { tabToggle("##halfpunchdamage", Item::halfPunchDamage); });
     });
     group(1, "Monitor", [&] {
         option("Small game window", "Saves GPU time while you play in VR.", S(42),
@@ -2036,9 +2088,12 @@ void App::options(ImVec2 origin, ImVec2 size) {
                              static_cast<int>(std::size(kMonitorRateValues)), &o.monitorRate);
                });
         option("Recording FOV",
-               "A wider view on the monitor to record, at least this wide across, instead of your left "
-               "eye. Costs frame rate; Spidy's marks stay in the headset.",
+               "A view of its own on the monitor to record, this wide across, instead of your left eye. "
+               "Costs frame rate; Spidy's marks stay in the headset.",
                S(150), [&] { tabCombo("##recordingfov", Item::recordingFov); });
+        option("Recording smoothing",
+               "How softly the recording view turns with your head; the headset's view is never smoothed.",
+               S(150), [&] { tabCombo("##recordingsmoothing", Item::recordingSmoothing); });
     });
     // A way round a display driver error as VR starts (PLAYERS.md), apart from the monitor's options since
     // October 25: beside them it read as one of them, and Recording FOV does nothing while it is on.
